@@ -1,0 +1,92 @@
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+
+local antiKickEnabled = true
+
+local FORWARD_DISTANCE = 3.5
+local HEIGHT_OFFSET = 0
+
+task.spawn(function()
+    while true do
+        if antiKickEnabled then
+            if humanoid and humanoid.Health > 0 then
+                humanoid:Move(Vector3.new(1, 0, 0), true)
+                task.wait(0.1)
+                humanoid:Move(Vector3.new(-1, 0, 0), true)
+            end
+
+            local mouse = player:GetMouse()
+            mousemoveabs(mouse.X + 5, mouse.Y)
+            task.wait(0.05)
+            mousemoveabs(mouse.X - 5, mouse.Y)
+
+            if humanoid then
+                humanoid.Jump = true
+                task.wait(0.1)
+                humanoid.Jump = false
+            end
+        end
+        task.wait(math.random(10, 15))
+    end
+end)
+
+game:GetService("UserInputService").InputBegan:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.K then
+        antiKickEnabled = not antiKickEnabled
+    end
+end)
+
+game:GetService("RunService").Heartbeat:Connect(function()
+    if humanoidRootPart then
+        humanoidRootPart.Velocity = humanoidRootPart.Velocity * 0.85
+    end
+end)
+
+local function findPads()
+    local pads = {}
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if (obj:IsA("Part") or obj:IsA("MeshPart")) then
+            local n = obj.Name:lower()
+            if n:find("pad") or n:find("duel") or n:find("start") then
+                table.insert(pads, obj)
+            end
+        end
+    end
+    return pads
+end
+
+task.spawn(function()
+    while true do
+        if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
+            task.wait(1)
+            continue
+        end
+
+        character = player.Character
+        humanoidRootPart = character.HumanoidRootPart
+        humanoid = character:FindFirstChild("Humanoid")
+
+        local pads = findPads()
+        if #pads > 0 then
+            humanoidRootPart.CFrame = pads[1].CFrame + Vector3.new(0, 5, 0)
+        end
+
+        local opponent = nil
+        for _, plr in ipairs(game.Players:GetPlayers()) do
+            if plr ~= player and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+                opponent = plr
+                break
+            end
+        end
+
+        if opponent and opponent.Character and opponent.Character:FindFirstChild("HumanoidRootPart") then
+            local oppRoot = opponent.Character.HumanoidRootPart
+            local forward = oppRoot.CFrame.LookVector * FORWARD_DISTANCE
+            humanoidRootPart.CFrame = oppRoot.CFrame + forward + Vector3.new(0, HEIGHT_OFFSET, 0)
+        end
+
+        task.wait(0.4)
+    end
+end)
