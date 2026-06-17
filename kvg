@@ -18,8 +18,6 @@ local LOBBY_SPAWNS = {
 local enabled = false
 local lastPadTeleport = 0
 local COOLDOWN = 180
-local currentFOV = 90
-local lowGFXEnabled = false
 
 local sessionKills = 0
 local sessionWins = 0
@@ -298,6 +296,7 @@ smallBtn.MouseButton1Click:Connect(function()
     mainFrame.Visible = not mainFrame.Visible
 end)
 
+-- Main Loop
 task.spawn(function()
     while true do
         if enabled and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
@@ -320,10 +319,10 @@ task.spawn(function()
                     end
                 end
 
-                if nearLobbySpawn or (currentTime - lastPadTeleport) > COOLDOWN then
+                if nearLobbySpawn or (currentTime - lastPadTeleport) >= COOLDOWN then
                     root.CFrame = CFrame.new(PAD_POSITION)
                     lastPadTeleport = currentTime
-                    statusLabel.Text = nearLobbySpawn and "Status: Spawned → Pad" or "Status: Teleported to Pad"
+                    statusLabel.Text = nearLobbySpawn and "Status: Spawned → Pad" or "Status: Teleported to Pad (3m)"
                     task.wait(2.5)
                 else
                     local remaining = math.floor(COOLDOWN - (currentTime - lastPadTeleport))
@@ -331,31 +330,42 @@ task.spawn(function()
                 end
             end
 
-            if humanoid then
-                local tool = nil
-                for _, t in ipairs(player.Backpack:GetChildren()) do
-                    if t:IsA("Tool") and (t.Name:lower():find("knife") or t.Name:lower():find("blade")) then
-                        tool = t
-                        break
-                    end
-                end
-                if not tool then
+            -- Improved Anti-Spam Auto Equip + Attack
+            if humanoid and humanoid.Health > 0 then
+                local equipped = player.Character:FindFirstChildWhichIsA("Tool")
+                
+                -- Equip only if needed
+                if not equipped or not (equipped.Name:lower():find("knife") or equipped.Name:lower():find("blade")) then
+                    local tool = nil
                     for _, t in ipairs(player.Backpack:GetChildren()) do
-                        if t:IsA("Tool") then tool = t break end
+                        if t:IsA("Tool") and (t.Name:lower():find("knife") or t.Name:lower():find("blade")) then
+                            tool = t
+                            break
+                        end
+                    end
+                    if not tool then
+                        for _, t in ipairs(player.Backpack:GetChildren()) do
+                            if t:IsA("Tool") then tool = t break end
+                        end
+                    end
+
+                    if tool then
+                        humanoid:UnequipTools()
+                        task.wait(0.08)
+                        humanoid:EquipTool(tool)
+                        task.wait(0.12)
                     end
                 end
 
-                if tool then
-                    humanoid:UnequipTools()
-                    task.wait(0.03)
-                    humanoid:EquipTool(tool)
-                    task.wait(0.05)
-                    local equipped = player.Character:FindFirstChildWhichIsA("Tool")
-                    if equipped then equipped:Activate() end
+                -- Attack (less spammy)
+                equipped = player.Character:FindFirstChildWhichIsA("Tool")
+                if equipped then
+                    equipped:Activate()
+                    task.wait(0.25) -- Balanced attack speed
                 end
             end
         end
-        task.wait(0.4)
+        task.wait(0.35)
     end
 end)
 
